@@ -25,7 +25,6 @@ const corsConfig = {
 app.use(cors(corsConfig));
 
 app.get('/', async (req, res) => {
-    await sendOtp('+917705074362', '78077');
     res.send('Response from server');
 })
 
