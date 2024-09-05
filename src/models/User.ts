@@ -73,7 +73,6 @@ class UserModel {
             if (phoneNumber) data.phoneNumber = phoneNumber;
             if (password) data.password = password;
 
-            // Use Prisma's update method to update the user
             const result = await prisma.user.update({
                 where: { id: id },
                 data: data,

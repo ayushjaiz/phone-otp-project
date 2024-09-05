@@ -10,45 +10,44 @@ interface Otp {
 }
 
 class OtpModel {
-    static async createOtp({ phoneNumber, otp, expiresAt }: Otp): Promise<Otp> {
+    static async upsertOtp({ phoneNumber, otp, expiresAt }: Otp): Promise<Otp> {
         try {
-            const res = await prisma.otp.create({
-                data: {
+            const upsertedOtp = await prisma.otp.upsert({
+                where: { phoneNumber },
+                update: {
+                    otp,
+                    expiresAt,
+                },
+                create: {
                     phoneNumber,
                     otp,
                     expiresAt,
                 },
             });
-            return res;
+
+            return upsertedOtp;
         } catch (error: any) {
-            throw new Error('Failed to create OTP: ' + error.message);
+            throw new Error('Failed to upsert OTP: ' + error.message);
         }
     }
 
     static async getOtp(phoneNumber: string): Promise<Otp | null> {
         try {
             const otpRecord = await prisma.otp.findFirst({
-                where: {
-                    phoneNumber: phoneNumber,
-                    expiresAt: {
-                        gte: new Date(), // Ensure the OTP is not expired
-                    },
-                },
-                orderBy: {
-                    createdAt: 'desc', // Get the latest OTP by creation time
-                },
+                where: { phoneNumber },
             });
-    
+
             return otpRecord;
         } catch (error: any) {
             throw new Error('Failed to retrieve OTP: ' + error.message);
         }
     }
 
+
     static async deleteOtp(phoneNumber: string): Promise<void> {
         try {
             await prisma.otp.deleteMany({
-                where: { phoneNumber: phoneNumber },
+                where: { phoneNumber },
             });
         } catch (error: any) {
             throw new Error('Failed to delete OTP: ' + error.message);
