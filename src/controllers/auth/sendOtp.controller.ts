@@ -3,7 +3,7 @@ import sendSms from "../../services/smsService";
 import { OtpModel } from "../../models/Otp";
 import bcrypt from 'bcrypt';
 
-const generateOtp = () => {
+const generateOtp = (): string => {
     return Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit OTP
 };
 
@@ -20,13 +20,12 @@ const sendOtpController = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Phone number is required" });
         }
 
-        const otp = generateOtp();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
-
-        const hashedOtp = await generateHashedOtp(otp);
+        const otp: string = generateOtp();
+        const expiresAt: Date = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+        const hashedOtp: string = await generateHashedOtp(otp);
 
         // Store OTP in the database
-        await OtpModel.createOtp({
+        await OtpModel.upsertOtp({
             phoneNumber,
             otp: hashedOtp,
             expiresAt,

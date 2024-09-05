@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { UserModel } from "../../models/User";
-import { OtpModel } from "../../models/Otp";
+import { User, UserModel } from "../../models/User";
+import { Otp, OtpModel } from "../../models/Otp";
 import bcrypt from 'bcrypt';
 
 const compareOtp = async (enteredOtp: string, storedOtp: string): Promise<boolean> => {
@@ -15,28 +15,40 @@ const compareOtp = async (enteredOtp: string, storedOtp: string): Promise<boolea
 const verifyOtpController = async (req: Request, res: Response) => {
     const { name, phoneNumber, otp } = req.body;
 
+    if (!phoneNumber || !otp) {
+         res.status(400).json({ error: "Phone number and OTP are required" });
+         return;
+    }
+
     try {
-        if (!name || !phoneNumber || !otp) {
-            return res.status(400).json({ error: "Missing required fields" });
+        // Check if user already exists
+        let user: User | null = await UserModel.getUser({ phoneNumber });
+
+        // If user doesn't previously exist, check if name is provided
+        if (!user && !name) {
+            return res.status(400).json({ error: "Name is required for new users" });
         }
 
-        const storedOtp = await OtpModel.getOtp(phoneNumber);
+        const storedOtp: Otp | null = await OtpModel.getOtp(phoneNumber);
 
         if (!storedOtp) {
             return res.status(401).json({ error: "Invalid or expired OTP" });
         }
 
-        const isOtpValid = await compareOtp(otp, storedOtp.otp);
-
-        if (!isOtpValid) {
-            return res.status(401).json({ error: "Invalid or expired OTP" });
+        // Check if OTP is expired
+        if (new Date() > storedOtp.expiresAt) {
+            await OtpModel.deleteOtp(phoneNumber);  // Clean up expired OTP
+            return res.status(401).json({ error: "OTP has expired" });
         }
 
-        // OTP is valid, proceed with the login or user creation
+        const isOtpValid: boolean = await compareOtp(otp, storedOtp.otp);
+        if (!isOtpValid) {
+            return res.status(401).json({ error: "Invalid OTP" });
+        }
+
+        // OTP is valid, proceed
         await OtpModel.deleteOtp(phoneNumber);
 
-        // Check if the user exists
-        let user = await UserModel.getUser({ phoneNumber });
         if (!user) {
             user = await UserModel.createUser({ name, phoneNumber });
             return res.status(200).json({ message: "Successful login, user created in the database", user });
@@ -49,5 +61,6 @@ const verifyOtpController = async (req: Request, res: Response) => {
         res.status(500).json({ error: "An error occurred while verifying OTP" });
     }
 };
+
 
 export default verifyOtpController;
